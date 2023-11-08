@@ -37,10 +37,10 @@ num_var, start, finish, service_time, delivery_time = inp()
 
 model = cp_model.CpModel()
 
-W=0 # W: upper bound for total time
-for i in range(num_var+2):
-    for j in range(num_var+2):
-        W += delivery_time[i][j]
+# W=0 # W: upper bound for total time
+# for i in range(num_var+2):
+#     for j in range(num_var+2):
+#         W += delivery_time[i][j]
 
 x = [[model.NewIntVar(0, 1, f"x[{i},{j}]") for i in range(0,num_var+2)] for j in range(0,num_var+2) ] # i: source, j: destination
 y = [model.NewIntVar(0, 9999999, f"y[{i}]") for i in range(0,num_var+2) ]
@@ -53,25 +53,24 @@ model.Add(y[0]==0)
 
 for i in range(num_var+2):
     model.Add(x[i][i]==0)               # source and destination are not the same
-    sum_des = 0             
-    sum_source = 0
-    for j in range(num_var+2):
-        sum_des += x[i][j]
-        sum_source += x[j][i]
-    model.Add(sum_des==1)               # only leave i once
-    model.Add(sum_source==1)            # only go to i once
     model.Add(x[num_var+1][i]==0)       # must end at N+1
     model.Add(x[i][0]==0)               # must start at 0
 
 for i in range(1,num_var+1):            # for every customer i from 1 to N
     model.Add(y[i] >= start[i])         # arrive after start(i)
     model.Add(y[i] <= finish[i])        # arrive before finish(i)
+    sum_des = 0             
+    sum_source = 0
     b=model.NewBoolVar('b')  
     for j in range(1,num_var+1): 
         # if go from i->j, add service & delivery time at i to total time
         model.Add(x[i][j] == 1).OnlyEnforceIf(b)
         model.Add(x[i][j] != 1).OnlyEnforceIf(b.Not())
-        model.Add(y[j] == y[i] + service_time[i] + delivery_time[i][j]).OnlyEnforceIf(b) 
+        model.Add(y[j] == y[i] + service_time[i] + delivery_time[i][j]).OnlyEnforceIf(b)
+        sum_des += x[i][j]
+        sum_source += x[j][i] 
+    model.Add(sum_des==1)               # only leave i once
+    model.Add(sum_source==1)            # only go to i once
 
 model.Minimize(y[num_var+1])
 
