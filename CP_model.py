@@ -25,8 +25,8 @@ def inp():
         finish.append(b)
         service_time.append(c)
     service_time = [0]+service_time+[0] # add d[0] = 0, d[N+1] = 0
-    start = [0]+start+[0]
-    finish = [0]+finish+[0]
+    start = [0]+start+[-999999]
+    finish = [0]+finish+[999999]
     delivery_time = []
     for _ in range(num_var+1):
         delivery_time.append(list(map(int,input().split()))+[0])
@@ -51,10 +51,7 @@ for i in range(num_var+2):
         W += delivery_time[i][j]
 
 x = [[model.NewIntVar(0, 1, f"x[{i},{j}]") for i in range(0,num_var+2)] for j in range(0,num_var+2) ] # i: source, j: destination
-y = [model.NewIntVar(0, W, f"y[{i}]") for i in range(0,num_var+2) ]
-
-# D_source 0-> N
-# D_destination  1 -> N+1
+y = [model.NewIntVar(0, W, f"y[{i}]") for i in range(0,num_var+2) ] # time to start deliver 
 
 # Contraints:
 model.Add(y[0]==0)
@@ -65,22 +62,22 @@ for i in range(1, num_var+1):
     model.Add(sum([x[i][j] for j in [edge[1] for edge in A if edge[0]==i]]) == 1)
 
 # only go to i once
-# A_start(i) = {j | (j,i) in A} = [edge[0] for edge in A if edge[1]==i]
+# A_source(i) = {j | (j,i) in A} = [edge[0] for edge in A if edge[1]==i]
 for i in range(1, num_var+1):
     model.Add(sum([x[j][i] for j in [edge[0] for edge in A if edge[1]==i]]) == 1)
 
 model.Add(sum([x[0][j] for j in range(1,num_var+1)])==1)
 model.Add(sum([x[j][num_var+1] for j in range(1,num_var+1)])==1)
 
-for i,j in A:           
-    b=model.NewBoolVar('b')  
-        # if go from i->j, add service & delivery time at i to total time
+for i,j in A:
+    b=model.NewBoolVar('b')
+    max_value = model.NewIntVar(0, W , 'max_value')
+    model.AddMaxEquality(max_value, [y[i], start[i]])           
     model.Add(x[i][j] == 1).OnlyEnforceIf(b)
     model.Add(x[i][j] != 1).OnlyEnforceIf(b.Not())
-    model.Add(y[j] == y[i] + service_time[i] + delivery_time[i][j]).OnlyEnforceIf(b)
+    model.Add(y[j] == max_value + service_time[i] + delivery_time[i][j]).OnlyEnforceIf(b)
 
 for i in range(1,num_var+1):
-    model.Add(y[i] >= start[i])
     model.Add(y[i] <= finish[i])
 
 model.Minimize(y[num_var+1])
@@ -88,11 +85,17 @@ model.Minimize(y[num_var+1])
 solver = cp_model.CpSolver()
 status = solver.Solve(model)
 if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-    print(f'Minimum objective function: {solver.ObjectiveValue()}')
-    for i in range(num_var+2):
-        for j in range(num_var+2):
-            if solver.Value(x[i][j]) ==1:
-                print(f'{i} -> {j}')
+    # print(f'Minimum objective function: {solver.ObjectiveValue()}')
+    print(num_var)
+    l = []
+    i=0
+    while len(l) < num_var:
+        for j in range(num_var+1):
+            if solver.Value(x[i][j])==1:
+                l.append(j)
+                i=j
+                break
+    print(' '.join(list(map(str,l))))
 else:
     print('No solution found.')
 
