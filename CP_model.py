@@ -59,27 +59,18 @@ y = [model.NewIntVar(0, W, f"y[{i}]") for i in range(0,num_var+2) ]
 # Contraints:
 model.Add(y[0]==0)
 
-for i in range(1,num_var+1):
-    A_des = [edge[1] for edge in A if edge[0]==i]
-    sum_des = 0             
-    for j in A_des:
-        sum_des += x[i][j] 
-    model.Add(sum_des==1)               # only leave i once
+# only leave i once
+# A_des(i) = {j | (i,j) in A} = [edge[1] for edge in A if edge[0]==i]
+for i in range(1, num_var+1):
+    model.Add(sum([x[i][j] for j in [edge[1] for edge in A if edge[0]==i]]) == 1)
 
-for i in range(1,num_var+1):
-    A_source = [edge[0] for edge in A if edge[1]==i]
-    sum_source=0
-    for j in A_source:
-        sum_source+=x[j][i]
-    model.Add(sum_source==1)            # only go to i once
+# only go to i once
+# A_start(i) = {j | (j,i) in A} = [edge[0] for edge in A if edge[1]==i]
+for i in range(1, num_var+1):
+    model.Add(sum([x[j][i] for j in [edge[0] for edge in A if edge[1]==i]]) == 1)
 
-sum_root = 0
-sum_end = 0
-for j in range(1,num_var+1):
-    sum_root+= x[0][j]
-    sum_end+= x[j][num_var+1]
-model.Add(sum_root==1)
-model.Add(sum_end==1)
+model.Add(sum([x[0][j] for j in range(1,num_var+1)])==1)
+model.Add(sum([x[j][num_var+1] for j in range(1,num_var+1)])==1)
 
 for i,j in A:           
     b=model.NewBoolVar('b')  
@@ -98,12 +89,11 @@ solver = cp_model.CpSolver()
 status = solver.Solve(model)
 if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
     print(f'Minimum objective function: {solver.ObjectiveValue()}')
-    temp = 0
     for i in range(num_var+2):
         for j in range(num_var+2):
-            if i==temp and x[i][j]==1:
-                print(f'{i} -> {j}: y[{j}] = {y[j]}')
-                temp = j
+            if solver.Value(x[i][j]) ==1:
+                print(f'{i} -> {j}')
 else:
     print('No solution found.')
+
 
