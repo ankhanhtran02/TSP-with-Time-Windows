@@ -37,13 +37,21 @@ num_var, start, finish, service_time, delivery_time = inp()
 
 model = cp_model.CpModel()
 
-# W=0 # W: upper bound for total time
-# for i in range(num_var+2):
-#     for j in range(num_var+2):
-#         W += delivery_time[i][j]
+B = [int(i) for i in range(num_var+2)]
+B2 = [(i,j) for i in B for j in B]
+F1 = [(int(i),0) for i in B]
+F2 = [(int(num_var+1),int(i)) for i in B]
+F3 = [(i,i) for i in B]
+A = list(filter(lambda item: item not in F1 and item not in F2 and item not in F3, B2))
+
+W=0 # W: upper bound for total time
+for i in range(num_var+2):
+    W+=service_time[i]
+    for j in range(num_var+2):
+        W += delivery_time[i][j]
 
 x = [[model.NewIntVar(0, 1, f"x[{i},{j}]") for i in range(0,num_var+2)] for j in range(0,num_var+2) ] # i: source, j: destination
-y = [model.NewIntVar(0, 9999999, f"y[{i}]") for i in range(0,num_var+2) ]
+y = [model.NewIntVar(0, W, f"y[{i}]") for i in range(0,num_var+2) ]
 
 # D_source 0-> N
 # D_destination  1 -> N+1
@@ -51,26 +59,38 @@ y = [model.NewIntVar(0, 9999999, f"y[{i}]") for i in range(0,num_var+2) ]
 # Contraints:
 model.Add(y[0]==0)
 
-for i in range(num_var+2):
-    model.Add(x[i][i]==0)               # source and destination are not the same
-    model.Add(x[num_var+1][i]==0)       # must end at N+1
-    model.Add(x[i][0]==0)               # must start at 0
-
-for i in range(1,num_var+1):            # for every customer i from 1 to N
-    model.Add(y[i] >= start[i])         # arrive after start(i)
-    model.Add(y[i] <= finish[i])        # arrive before finish(i)
+for i in range(1,num_var+1):
+    A_des = [edge[1] for edge in A if edge[0]==i]
     sum_des = 0             
-    sum_source = 0
-    b=model.NewBoolVar('b')  
-    for j in range(1,num_var+1): 
-        # if go from i->j, add service & delivery time at i to total time
-        model.Add(x[i][j] == 1).OnlyEnforceIf(b)
-        model.Add(x[i][j] != 1).OnlyEnforceIf(b.Not())
-        model.Add(y[j] == y[i] + service_time[i] + delivery_time[i][j]).OnlyEnforceIf(b)
-        sum_des += x[i][j]
-        sum_source += x[j][i] 
+    for j in A_des:
+        sum_des += x[i][j] 
     model.Add(sum_des==1)               # only leave i once
+
+for i in range(1,num_var+1):
+    A_source = [edge[0] for edge in A if edge[1]==i]
+    sum_source=0
+    for j in A_source:
+        sum_source+=x[j][i]
     model.Add(sum_source==1)            # only go to i once
+
+sum_root = 0
+sum_end = 0
+for j in range(1,num_var+1):
+    sum_root+= x[0][j]
+    sum_end+= x[j][num_var+1]
+model.Add(sum_root==1)
+model.Add(sum_end==1)
+
+for i,j in A:           
+    b=model.NewBoolVar('b')  
+        # if go from i->j, add service & delivery time at i to total time
+    model.Add(x[i][j] == 1).OnlyEnforceIf(b)
+    model.Add(x[i][j] != 1).OnlyEnforceIf(b.Not())
+    model.Add(y[j] == y[i] + service_time[i] + delivery_time[i][j]).OnlyEnforceIf(b)
+
+for i in range(1,num_var+1):
+    model.Add(y[i] >= start[i])
+    model.Add(y[i] <= finish[i])
 
 model.Minimize(y[num_var+1])
 
@@ -86,5 +106,4 @@ if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
                 temp = j
 else:
     print('No solution found.')
-
 
