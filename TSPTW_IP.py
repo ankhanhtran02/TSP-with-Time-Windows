@@ -68,7 +68,8 @@ def solve():
     objective = solver.Objective()
     for i in range(n+1):
         for j in range(n+1):
-            objective.SetCoefficient(x[i][j], t[i][j])
+            if j != 0:
+                objective.SetCoefficient(x[i][j], t[i][j])
     objective.SetMinimization()
     # Solving
     status = solver.Solve()
