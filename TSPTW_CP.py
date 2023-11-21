@@ -15,82 +15,82 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
         return self.__solution_count
 
 def inp():
-    num_var = int(input()) # not including starting point & fake ending point
-    start = []
-    finish = []
-    service_time = []
-    for _ in range(num_var):
+    N = int(input()) # not including starting point & fake ending point
+    e = []
+    l = []
+    d = []
+    for _ in range(N):
         a,b,c = map(int,input().split())
-        start.append(a)
-        finish.append(b)
-        service_time.append(c)
-    service_time = [0]+service_time+[0] # add d[0] = 0, d[N+1] = 0
-    start = [0]+start+[-999999]
-    finish = [0]+finish+[999999]
-    delivery_time = []
-    for _ in range(num_var+1):
-        delivery_time.append(list(map(int,input().split()))+[0])
-    delivery_time.extend([[0]*(num_var+2)])
-    return num_var, start, finish, service_time, delivery_time
+        e.append(a)
+        l.append(b)
+        d.append(c)
+    d = [0]+d+[0] # add d[0] = 0, d[N+1] = 0
+    e = [0]+e+[0]
+    l = [0]+l+[999999]
+    t = []
+    for _ in range(N+1):
+        t.append(list(map(int,input().split()))+[0])
+    t.extend([[0]*(N+2)])
+    return N, e, l, d, t
 
-num_var, start, finish, service_time, delivery_time = inp()
+N, e, l, d, t = inp()
 
 model = cp_model.CpModel()
 
-B = [int(i) for i in range(num_var+2)]
+B = [int(i) for i in range(N+2)]
 B2 = [(i,j) for i in B for j in B]
 F1 = [(int(i),0) for i in B]
-F2 = [(int(num_var+1),int(i)) for i in B]
+F2 = [(int(N+1),int(i)) for i in B]
 F3 = [(i,i) for i in B]
 A = list(filter(lambda item: item not in F1 and item not in F2 and item not in F3, B2))
 
 W=0 # W: upper bound for total time
-for i in range(num_var+2):
-    W+=service_time[i]
-    for j in range(num_var+2):
-        W += delivery_time[i][j]
+for i in range(N+2):
+    W+=d[i]
+    for j in range(N+2):
+        W += t[i][j]
 
-x = [[model.NewIntVar(0, 1, f"x[{i},{j}]") for i in range(0,num_var+2)] for j in range(0,num_var+2) ] # i: source, j: destination
-y = [model.NewIntVar(0, W, f"y[{i}]") for i in range(0,num_var+2) ] # time to start deliver 
+x = [[model.NewIntVar(0, 1, f"x[{i},{j}]") for i in range(0,N+2)] for j in range(0,N+2) ] # i: source, j: destination
+y = [model.NewIntVar(0, W, f"y[{i}]") for i in range(0,N+2) ] # arrival time 
 
 # Contraints:
 model.Add(y[0]==0)
 
 # only leave i once
 # A_des(i) = {j | (i,j) in A} = [edge[1] for edge in A if edge[0]==i]
-for i in range(1, num_var+1):
+for i in range(1, N+1):
     model.Add(sum([x[i][j] for j in [edge[1] for edge in A if edge[0]==i]]) == 1)
 
 # only go to i once
 # A_source(i) = {j | (j,i) in A} = [edge[0] for edge in A if edge[1]==i]
-for i in range(1, num_var+1):
+for i in range(1, N+1):
     model.Add(sum([x[j][i] for j in [edge[0] for edge in A if edge[1]==i]]) == 1)
 
-model.Add(sum([x[0][j] for j in range(1,num_var+1)])==1)
-model.Add(sum([x[j][num_var+1] for j in range(1,num_var+1)])==1)
+model.Add(sum([x[0][j] for j in range(1,N+1)])==1)
+model.Add(sum([x[j][N+1] for j in range(1,N+1)])==1)
 
 for i,j in A:
     b=model.NewBoolVar('b')
     max_value = model.NewIntVar(0, W , 'max_value')
-    model.AddMaxEquality(max_value, [y[i], start[i]])           
+    model.AddMaxEquality(max_value, [y[i], e[i]])           
     model.Add(x[i][j] == 1).OnlyEnforceIf(b)
     model.Add(x[i][j] != 1).OnlyEnforceIf(b.Not())
-    model.Add(y[j] == max_value + service_time[i] + delivery_time[i][j]).OnlyEnforceIf(b)
+    model.Add(y[j] == max_value + d[i] + t[i][j]).OnlyEnforceIf(b)
+    
+for i in range(1,N+1):
+    model.Add(y[i] <= l[i])
 
-for i in range(1,num_var+1):
-    model.Add(y[i] <= finish[i])
-
-model.Minimize(y[num_var+1])
+model.Minimize(sum([x[i][j]*t[i][j] for i in range(N+2) for j in range(N+2)]))
 
 solver = cp_model.CpSolver()
 status = solver.Solve(model)
 if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
     # print(f'Minimum objective function: {solver.ObjectiveValue()}')
-    print(num_var)
+    print(N)
     l = []
     i=0
-    while len(l) < num_var:
-        for j in range(num_var+1):
+    while len(l) < N:
+        for j in range(N+1):
             if solver.Value(x[i][j])==1:
                 l.append(j)
                 i=j
@@ -98,5 +98,6 @@ if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
     print(' '.join(list(map(str,l))))
 else:
     print('No solution found.')
+
 
 
