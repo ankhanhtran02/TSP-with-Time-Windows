@@ -1,8 +1,27 @@
+'''
+Step 1: Initialization
+
+Step 2: Selection
+    
+Step 3: Crossover
+Step 4: Mutation
+    
+Step 5: Replacement
+    Create a new population by combining offspring chromosomes with selected parent chromosomes.
+    Elitism ensures that the best chromosomes are preserved across generations.
+    
+Step 6: Termination
+    Repeat steps 2-5 until a stopping criterion is met (e.g., maximum generations reached, no improvement in solution).
+    The best chromosome in the final population represents the optimal or near-optimal route for the TSPTW problem.
+'''
+
+
 import random
+# random.seed(12345)
 
 ### mn thay tên file là ra đáp án nhé, còn điều chỉnh tham số thì ở dòng tsptw_ga ( 268)
 
-def read_input_file(filename='TSPTW_test_2.txt'):
+def read_input_file(filename='TSPTW_test_1.txt'):
     '''
     This function reads an input file for the TSPTW problem.
     If successful, this returns a tuple (N, e, l, d, t) where:
@@ -29,7 +48,28 @@ def read_input_file(filename='TSPTW_test_2.txt'):
         return None
     
     
-n , e, l, d, time_matrix = read_input_file('TSPTW_test_2.txt')
+n , e, l, d, time_matrix = read_input_file('r1.txt')
+'''
+hoặc nhập input thủ công như đống # dưới đây
+'''
+
+# n = int(input())
+# e = [0]
+# l = [0]
+# d = [0]
+# for i in range(n):
+#     _ = list(map(int, input().split()))
+#     e.append(_[0])
+#     l.append(_[1])
+#     d.append(_[2])
+
+# time_matrix = []
+# for i in range(n + 1):
+#     _ = list(map(int, input().split()))
+#     time_matrix.append(_)
+
+
+
 e = [0] + e
 l = [0] + l
 d = [0] + d 
@@ -39,25 +79,31 @@ best_fitness = 0
 best_tour = []
 
 
-# greedy = sorted(l)
-# def greedy_solution(n):              # by greedy
-#     start_path = []
-#     for i in range (1, n + 1):
-#         for j in range (1, n + 1):
-#             if greedy[i] == l[j]:
-#                 start_path.append(j)
-#                 break
-#     return start_path 
 
-greedy = sorted(e)
+
 def greedy_solution(n):              # by greedy
-    start_path = []
+    start_path_e = []
+    greedy = sorted(e)
     for i in range (1, n + 1):
         for j in range (1, n + 1):
             if greedy[i] == e[j]:
-                start_path.append(j)
+                start_path_e.append(j)
                 break
-    return start_path 
+                
+    start_path_l = []
+    
+    greedy = sorted(l)
+    for i in range (1, n + 1):
+        for j in range (1, n + 1):
+            if greedy[i] == l[j]:
+                start_path_l.append(j)
+                break
+    if check_feasible(0,start_path_e) and check_feasible(0,start_path_l) == False:
+        return start_path_e
+    elif check_feasible(0,start_path_l) and check_feasible(0,start_path_e) == False:
+        return start_path_l
+    else:
+        return [start_path_e, start_path_l]
 
 def create_shuffle(n):
     lst = [i for i in range(1,n + 1)]
@@ -81,34 +127,41 @@ def some_initial_population(n):
     cnt = 0
     while True :
         cnt += 1
-        population = []
+        feasible_population = []
         for i in range(n):
             lst = create_shuffle(n)
-            population.append(lst)
+            if check_feasible(0, lst):
+                feasible_population.append(lst)
         ##################### Check Feasible #####################
-        feasible_population = []
-        for p in population:
-            is_feasible = True
-            real_time = 0
-            is_feasible = check_feasible(real_time, p)
-            if is_feasible:
-                feasible_population.append(p)
-                
-        #### quần thể khôgn đủ lớn nên thêm tham lam vào cho đủ 
-        
-        if cnt >= n:
-            while len(feasible_population) < n:
-                if check_feasible(0, greedy_solution(n)) == False:
-                    return feasible_population
-                feasible_population.append(greedy_solution(n))
-
-        if len(feasible_population) >= n:
+        if len(feasible_population) >= 2:
             break
+                
+        #### quần thể không đủ lớn nên thêm tham lam vào cho đủ 
+        
+
+    while len(feasible_population) < n:
+        if greedy_solution(n) == None:
+            return feasible_population
+        else:
+            if len(greedy_solution(n)) == 1:
+                feasible_population.append(greedy_solution(n))
+            elif len(greedy_solution(n)) == 2:
+                for i in range(2):
+                    feasible_population.append(greedy_solution(n)[i])
+
+    if len(feasible_population) >= n:
+        return feasible_population
     # coi như đã có feasible solution
     return feasible_population
 #bag = some_initial_population(n)
 ################# fitnesses #######################
-def fitness(tour):       # or chromosome, fitness or cost
+
+'''
+khi đã tạo được quần thể đầu tiên thì việc tiép theo là đánh giá mức độ phù hợp
+để lựa chọn cặp gen trong việc xây dựng thế hệ tiếp theo
+Việc này được thực hiện qua hàm EVALUATE()
+'''
+def fitness(tour):       # tour or chromosome, fitness or cost
     fitness = time_matrix[0][tour[0]]
     for i in range(n-1):
         fitness += time_matrix[tour[i]][tour[i + 1]]
@@ -133,7 +186,7 @@ def evaluate(bag):               # bag = some_feasible_solu
         for i in range(n):
             fitnesses_copy[i] = max(fitnesses) - fitnesses_copy[i]
         for i in range(n):    
-            list_prob.append(fitnesses_copy[i] / sum(fitnesses_copy)) # fitnessé bij thay đổi
+            list_prob.append(fitnesses_copy[i] / sum(fitnesses_copy)) # fitnessé bị thay đổi
 #         print(fitnesses_copy)
         
         return list_prob
@@ -146,7 +199,9 @@ def evaluate(bag):               # bag = some_feasible_solu
 
 ################# choose parents ######################
 
+
 def select_parents(k):   # population_size
+    global bag
     fit = evaluate(bag)
     while len(parents) < k:
         idx = random.randint(0,len(fit)-1)             # tìm idx từ 0 -> n-1
@@ -156,6 +211,10 @@ def select_parents(k):   # population_size
 
 
 ################ crucial part: mutation #####################
+'''
+ở phần mutation-crossover-swap sẽ là việc tháo, lắp các gen để tạo ra một gen tốt và hoàn chỉnh
+
+'''
 
 def swap(tour): # but very disruptive process in the context of TSP
     city1 = random.randint(0,n-1)      # từ thành phố thứ 2 đến n
@@ -231,40 +290,60 @@ def mutate(p_cross, p_mut):
 # print(A)
 
 
-
+'''
+Gọi hàm TSPTW, điều chỉnh các thông số:
+1.Num_generations: số lần chạy code để tạo quần thể mới...
+2.Population_size: là tham số k trong hàm select_parents tượng trưng cho việc lấy k bố mẹ để tạo con.
+                   qua thử nghiệm thì chỉ thấy K = 2 là đang ở mức ổn, số lớn hơn thì chạy rất lâu, thường là vô hạn time
+3.P_crossocer, p_mut: các tham số để thuật toán chạy kết hợp với random rồi so sánh
+                      Do chưa tìm thấy tài liệu nào nói về việc chọn 2 loại xác suất này 
+                      Nên tôi lấy theo Bard - AI khuyên:
+                          Đối với các quần thể lớn, p_crossover có thể được giảm xuống để tránh trùng lặp.
+                          Nếu các giải pháp tốt thường được tìm thấy, thì p_mutation có thể được giảm xuống để tránh mất chúng.
+                      p_mutation: 0.01-0.1
+                      p_crossover: 0.6-0.9
+'''
 
 def tsptw_ga(n, num_generations, population_size , p_crossover, p_mut):
-    bag = some_initial_population(n)
-    
-    ####        quần thể không có ai   #######
-    if len(bag) == 0:
-        return []     
-    
-    
     global best_tour, best_fitness, parents
-    best_tour = bag[0]
+    bag = some_initial_population(n)
+
+    if len(bag) == 0:
+        return []    
+    fitness_1st_bag = [fitness(i) for i in bag]
+    min_fitness =  min(fitness_1st_bag)
+    index_min_fitness = fitness_1st_bag.index(min_fitness)
+    best_tour = bag[index_min_fitness]
+
     # Run the genetic algorithm for a specified number of generations
     for _ in range(num_generations):
         try:
             best_fitness = min([fitness(i) for i in bag])
             # Evaluate the fitness of each individual in the population
-            fitnesses = evaluate(bag)
+
             # Select parents based on their fitness
             parents = select_parents(population_size)
             # Create offspring using crossover and mutation
             children = []
-            children = mutate(p_cross, p_mut)
+            children = mutate(p_crossover, p_mut)
 
             # Replace the old population with the new population
-            bag = children
-            if min([fitness(i) for i in bag]) < best_fitness:
-                best_fitness = min([fitness(i) for i in bag])
-                best_tour = i
+            bag = childrenj
+            if min([fitness(p) for p in bag]) < best_fitness:
+                best_fitness = min([fitness(p) for p in bag])
+                best_tour = p
             
         except:
             continue
     return best_tour
 print(n)
-best_tour = tsptw_ga(n, num_generations = 50,  population_size = 20, p_crossover = 0.9, p_mut = 0.09)
-print(*best_tour)
+best_tour = tsptw_ga(n, num_generations = 20,  population_size = 10, p_crossover = 0.9, p_mut = 0.09)
+print(best_tour)
+
 print(best_fitness)
+
+
+'''
+Thường phải chạy nhiều lần mới ra optimal
+Nếu là test chặt thì khó tránh khỏi việc chỉ có thể ra greedy nếu nó tồn tại
+'''
