@@ -424,7 +424,7 @@ class ACOSolver:
             iteration += 1
 
 if __name__ == "__main__":
-    problem_inputs = online_inp('TSPTW_test_1.txt')
+    problem_inputs = read_input_file('TSPTW_test_1.txt')
     k_bw, muy, N_s = 40, 2, 3
     ro, K_iter, K_restart, K_bf, X = 0.15, 0.05, 0.3, 0.65, 30
         
