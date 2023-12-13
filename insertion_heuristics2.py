@@ -120,13 +120,7 @@ class Solver:
         print(TSPTW_cost(read_input_file(filepath), route[1:]))
 
 if __name__ == '__main__':
-    folder_path = 'E:\\SchoolworkBK\\20231\\Optimization\\TSPTW\\input'
-    file_names = os.listdir(folder_path)
-    for filename in file_names:
-        print(f'{filename}:', end=' ')
-        inp_filepath = os.path.join(folder_path,filename)
-        N, nodes, time_matrix = import_data_from_file(inp_filepath)
-        # N, nodes, time_matrix = import_data()
-        s = Solver(N, nodes, time_matrix)
-        s.Solve()
-        s.printSol(inp_filepath)
+    N, nodes, time_matrix = import_data()
+    s = Solver(N, nodes, time_matrix)
+    s.Solve()
+    s.printSol()
