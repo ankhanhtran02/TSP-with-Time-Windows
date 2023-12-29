@@ -6,6 +6,7 @@ from urllib.request import urlopen
 from os.path import exists
 from collections import deque
 
+
 def online_inp(file_name):
     '''
     This function reads the input file from the online github link provided by our team, or reads from local file if a file with the same name already exists
@@ -66,18 +67,27 @@ class Node:
         Calculate the parameters necessary for heuristic calculation
         '''
         N, e, l, d, t = problem_inputs
-        lambdas = [random.random() for _ in range(3)]
-        lambda_c, lambda_l, lambda_e = [item/sum(lambdas) for item in lambdas]
-        min_t = -99999999999999999999999
-        max_t = 99999999999999999999999
+        # lambdas = [random.random() for _ in range(3)]
+        # lambda_c, lambda_l, lambda_e = [item/sum(lambdas) for item in lambdas]
+        lambda_c, lambda_l, lambda_e = 0.75, 0.1, 0.15
+        min_t = 99999999999999999999999
+        max_t = -99999999999999999999999
+        min_e, max_e, min_l, max_l = min(e), max(e), min(l), max(l)
+        lambda_heuristics = [[0 for i in range(N+1)] for j in range(N+1)]
         for i in range(N+1):
             for j in range(N+1):
                 if t[i][j] < min_t:
                     min_t = t[i][j]
                 if t[i][j] > max_t:
                     max_t = t[i][j]
+        for i in range(N+1):
+            for j in range(N+1):
+                lambda_heuristics[i][j] = ((max_e - e[j-1])/(max_e - min_e), (max_l - l[j-1])/(max_l - min_l), (max_t - t[i][j])/(max_t - min_t))
+        e_temp = [0] + e
+        l_temp = [0] + l
+        proximity = [[min(l_temp[j], l_temp[i] + t[i][j]) - max(e_temp[j], e_temp[i] + t[i][j]) for j in range(N+1)] for i in range(N+1)]
 
-        Node.h_params = ((N, e, l, d, t), (min(e), max(e), min(l), max(l), min_t, max_t), (lambda_e, lambda_l, lambda_c), (np.ones((N+1, N+1)) * 0.5,))
+        Node.h_params = ((N, e, l, d, t), (min_e, max_e, min_l, max_l, min_t, max_t), (lambda_e, lambda_l, lambda_c), (np.ones((N+1, N+1)) * 0.1, lambda_heuristics, proximity))
 
 def calculate_heuristic(parent:Node, new_value:int):
     '''
@@ -90,7 +100,7 @@ def calculate_heuristic(parent:Node, new_value:int):
     # index 0: (N, e, l, d, t)
     # index 1: (min(e), max(e), min(l), max(l), min(t), max(t))
     # index 2: (lambda_e, lambda_l, lambda_c)
-    # index 3: (N+1) x (N+1) pheromone matrix
+    # index 3: ((N+1) x (N+1) pheromone matrix, lambda_heuristics, proximity)
     assert isinstance(p[0][0], int)
     assert len(p[0]) == 5
     assert len(p[1]) == 6
@@ -99,14 +109,15 @@ def calculate_heuristic(parent:Node, new_value:int):
     assert isinstance(p[0][1][new_value - 1], int)
     if parent == None: # When the first Node of the Tree is created, there is no further information
         return 0
-    nuy = p[2][2] * (p[1][5] - p[0][4][parent.value][new_value]) / (p[1][5] - p[1][4]) + p[2][1] * (p[1][3] - p[0][2][new_value - 1]) / (p[1][3] - p[1][2]) + p[2][0] * (p[1][1] - p[0][1][new_value - 1]) / (p[1][1] - p[1][0])
+    nuy = p[2][2] * p[3][1][parent.value][new_value][2] + p[2][1] * p[3][1][parent.value][new_value][1] + p[2][0] * p[3][1][parent.value][new_value][0]
     pheromone = p[3][0][parent.value][new_value]
     times_passed = max((parent.h_inf[2] + p[0][4][parent.value][new_value]), p[0][1][new_value - 1]) # The total time passed before getting to the point new_value
     v = 0 # Check if putting the new node in the path creates a new violation
     # print(times_passed)
     if times_passed >= p[0][2][new_value - 1]:
         v = 1
-    return (pheromone*nuy, 0, times_passed, parent.h_inf[3] + v)
+    # return (pheromone*nuy*int(p[3][2][parent.value][new_value] > -500)+0.0001, 0, times_passed, parent.h_inf[3] + v)
+    return (max(p[3][2][parent.value][new_value], 100) * pheromone, 0, times_passed, parent.h_inf[3] + v)
 
 def lex_compare(leave_node1:Node, leave_node2:Node) -> bool:
     '''
@@ -159,6 +170,12 @@ class Tree:
         self.muy = muy
         self.N_s = N_s
         self.strict = True # This guarantee any path generated doesn't violate time constraints. If every path found after expansion violates time window constraints, then this will automatically be set to False
+    
+    def reset_leaves(self):
+        for leave in self.leaves:
+            leave.Children = []
+            leave.extensions = {}
+
     def expand(self, q0=0.5):
         '''
         - Expand the tree by adding more children to the current leave nodes, after calculating the heuristic.
@@ -170,18 +187,22 @@ class Tree:
             for new in leave_node.extensions:
                 self.heuristics.append((leave_node, new, calculate_heuristic(leave_node, new)))
         if self.strict:
-            self.heuristics = [item for item in self.heuristics if item[2][3] == 0]
+            print(f'current len is: {len(self.heuristics)}')
+            self.heuristics = [item for item in self.heuristics if (item[2][0] > 0 and item[2][3] == 0)]
+            print(len(self.heuristics))
             if len(self.heuristics) == 0:
                 self.strict = False
                 self.expand()
                 return
+        else:
+            self.heuristics = [item for item in self.heuristics if (item[2][0] > 0)]
         self.heuristics.sort(key=lambda item:item[2][0]) # Sort by the product of the pheromone*nuy function
         new_leaves = []
         q = random.random()
         if q < q0:
             # print("Expanding deterministically")
             # Select the best k_bw new possible nodes to expand
-            for i in range(-max(min(int(self.muy * len(self.leaves))+1, len(self.heuristics)), 3*len(self.heuristics)//4), 0):
+            for i in range(-min(int(self.muy * len(self.leaves))+1, len(self.heuristics)), 0):
                 self.heuristics[i][0].AddChild(self.heuristics[i][1], self.heuristics[i][2]) # Add a child to the best leave nodes
                 new_leaves.append(self.heuristics[i][0].Children[-1]) # Add the previously added child to the list of new leaves
 
@@ -200,13 +221,14 @@ class Tree:
                 new_leaves.append(extension[0].Children[-1]) # Add the previously added child to the list of new leaves
         for leave in self.leaves:
             leave.CalculateRankSum()
+        self.reset_leaves()
         self.leaves = new_leaves
         # Modify the leaves array
     def shrink(self):
         '''
         Sort the leaves in ascending order of the number of violations and if they are equal, sort according to the sum rank and only keep k_bw best leaves for future expansion
         '''
-        self.leaves.sort(key=lambda item:(item.h_inf[3], item.h_inf[1])) 
+        self.leaves.sort(key=lambda item:(item.h_inf[3], item.h_inf[2], item.h_inf[1]))
         self.leaves = self.leaves[:self.k_bw]
     def __str__(self):
         return ''
@@ -238,7 +260,7 @@ class BeamSolver:
         for leave in self.solver_tree.leaves:
             self.found_paths.append(path_from_leave(leave))
 
-def ApplyPheromoneUpdate(pb_iter, pb_restart, pb_bf, ro=0.1, K_iter=0.2, K_restart=0.3, K_bf = 0.5):
+def ApplyPheromoneUpdate(pb_iter, pb_restart, pb_bf, ro=0.1, K_iter=0.2, K_restart=0.3, K_bf=0.5):
     '''
     - Given the best path in the iteration, best path after restarting the algorithm and the best path found so far, this function updates the pheromone matrix contained in the Node.h_params variable according to the weights specified by K_iter, K_restart and K_bf, respectively
     - ro is the update coefficient, the larger ro is, the faster the matrix will be updated
@@ -253,10 +275,27 @@ def ApplyPheromoneUpdate(pb_iter, pb_restart, pb_bf, ro=0.1, K_iter=0.2, K_resta
         current_pm[pb_bf[i]][pb_bf[i+1]] += ro*K_bf
     return
 
-def Tabu(problem_inputs:tuple, start_path:list, run_time=10):
+def Calculate(path):
+    n, e, l, d, t = Node.h_params[0]
+    cur_pos = 0
+    total_time = 0
+    travel_time = 0
+    for i in range (0, n):
+        total_time += t[cur_pos][path[i]]
+        travel_time += t[cur_pos][path[i]]
+        if total_time <= l[path[i]-1]:   
+            total_time = max(total_time, e[path[i]-1])
+            total_time += d[path[i]-1]
+            cur_pos = path[i]
+        else: 
+            return 99999999999
+    return travel_time
+
+def Tabu(start_path:list, run_time=10):
     '''
     Tabu search, which will be used as a local search algorithm to enhance the path found by ACO and the best path found so far
     '''
+    problem_inputs = Node.h_params[0]
     start_time = time.time()
     n, e, l, d, t = problem_inputs
     e = [-1] + e
@@ -287,6 +326,7 @@ def Tabu(problem_inputs:tuple, start_path:list, run_time=10):
 
     cur_MIN = Calculate(start_path)
     list_optimal_path = [start_path]
+    cur_OPTIMAL_path = start_path
     while True: 
         element = tabu.popleft()  # This pops the first inserted item
         if element[0] == 0: 
@@ -305,6 +345,7 @@ def Tabu(problem_inputs:tuple, start_path:list, run_time=10):
                         found_better = True # found a local maximum
                         cur_best_element = []
                         cur_best_element.append((0, try_path))
+                        cur_OPTIMAL_path = try_path[:]
                         cur_MIN = Calculate(try_path)
                         print("Time taken", time.time() - start_time, "CUR_MIN", cur_MIN)
                     elif Calculate(try_path) == cur_MIN:
@@ -319,7 +360,7 @@ def Tabu(problem_inputs:tuple, start_path:list, run_time=10):
         if time.time() - start_time > run_time: 
             break
 
-    cur_OPTIMAL_path = start_path
+    
     for path in list_optimal_path:
         if path[0] == 0 and Calculate(path[1]) <= cur_MIN:
             cur_MIN = Calculate(path[1])
@@ -335,6 +376,7 @@ class ACOSolver:
     - The parameters k_bw, muy, N_s, q0 of the Probabilistic Beam Search will be passed to the BeamSolver object
 
     '''
+    best_10 = []
     def __init__(self, k_bw:int, muy:float, N_s:int, q0):
         self.N_s = N_s
         self.k_bw = k_bw
@@ -384,22 +426,26 @@ class ACOSolver:
 
         assert len(Node.h_params[3][0]) == problem_inputs[0] + 1 and len(Node.h_params[3][0][0]) == problem_inputs[0] + 1
         start_loop = time.time()
-        iteration = 1
+        iteration = 0
+
+    
         while True:
             beamSolver = BeamSolver(self.k_bw, self.muy, self.N_s, self.q0)
             beamSolver.fit(self.problem_inputs)
             leave_P_ib = beamSolver.solver_tree.leaves[0] # Take the best leave node returned by the BeamSolver
+            print('number of ant violations: ' + str(leave_P_ib.h_inf[3]))
             if lex_compare(leave_P_ib, self.leave_P_rb):
                 self.leave_P_rb = leave_P_ib
             if lex_compare(leave_P_ib, self.leave_P_bf):
                 self.leave_P_bf = leave_P_ib
-            if iteration == 1:
-                if TSPTW_cost(problem_inputs, path_from_leave(self.leave_P_bf))!=None and TSPTW_cost(problem_inputs, path_from_leave(self.leave_P_bf)) < TSPTW_cost(problem_inputs, path_greedy_e):
+            if iteration == 0:
+                if TSPTW_cost(problem_inputs, path_from_leave(self.leave_P_bf))!=None and TSPTW_cost(problem_inputs, path_from_leave(self.leave_P_bf)) < TSPTW_cost(problem_inputs, self.best_path):
                     self.best_path = path_from_leave(self.leave_P_bf)
+                    print(f'new cost is {TSPTW_cost(problem_inputs, self.best_path)} iteration 0')
             # cf = ComputeCF(Node.h_params[3][0]) # Calculate the convergence factor of the pheromone matrix
             if self.bs_update and iteration % self.X == 0:
-                trash_node = Node(0, None, problem_inputs)
-                trash_node.calculate_h_params(self.problem_inputs)
+                # trash_node = Node(0, None, problem_inputs)
+                # trash_node.calculate_h_params(self.problem_inputs)
                 self.leave_P_rb = None
                 self.bs_update = False
             else:
@@ -407,32 +453,49 @@ class ACOSolver:
                     print(f'Current iteration is #{iteration}')
                     self.bs_update = True
                     iteration -= 1
-                    self.best_path = Tabu(self.problem_inputs, self.best_path, 2)
-                self.best_tabu_path = Tabu(self.problem_inputs, path_from_leave(self.leave_P_bf), 1)
+                    self.best_path = Tabu(self.best_path, 3)
+                    print(f'new cost is {TSPTW_cost(problem_inputs, self.best_path)} tabu')
+                self.best_tabu_path = path_from_leave(self.leave_P_rb)
+                if iteration % self.X <= 5:
+                    self.best_tabu_path = Tabu(path_from_leave(self.leave_P_rb), 1)
                 temp_best = path_from_leave(self.leave_P_bf)
                 if TSPTW_cost(self.problem_inputs, temp_best) == None or TSPTW_cost(self.problem_inputs, self.best_tabu_path) < TSPTW_cost(self.problem_inputs, temp_best):
                     temp_best = self.best_tabu_path
                 assert len(temp_best) == self.problem_inputs[0]
 
-                if TSPTW_cost(self.problem_inputs, temp_best) != None and (TSPTW_cost(self.problem_inputs, self.best_path) == None or TSPTW_cost(self.problem_inputs, temp_best) < TSPTW_cost(self.problem_inputs, self.best_path)):
-                    self.best_path = temp_best
+                if TSPTW_cost(self.problem_inputs, temp_best) != None and ((TSPTW_cost(self.problem_inputs, self.best_path) == None or TSPTW_cost(self.problem_inputs, temp_best) < TSPTW_cost(self.problem_inputs, self.best_path))):
+                    self.best_path = temp_best[:]
+                    print(f'new cost is {TSPTW_cost(problem_inputs, self.best_path)} ant')
+                else:
+                    print(TSPTW_cost(problem_inputs, temp_best))
                 
                 ApplyPheromoneUpdate(path_from_leave(leave_P_ib), temp_best, self.best_path,self.ro, self.K_iter, self.K_restart, self.K_bf)
+                # ApplyPheromoneUpdate(self.best_path, temp_best, self.best_path,self.ro, self.K_iter, self.K_restart, self.K_bf)
+                # print(Node.h_params[3][0])
             end_current_loop = time.time()
             if end_current_loop - start_loop > self.solution_time:
                 break
             iteration += 1
 
 if __name__ == "__main__":
-    problem_inputs = read_input_file('TSPTW_test_1.txt')
-    k_bw, muy, N_s = 40, 2, 3
-    ro, K_iter, K_restart, K_bf, X = 0.15, 0.05, 0.3, 0.65, 30
-        
-    main_solver = ACOSolver(k_bw, muy, N_s, 0.5)
+    problem_inputs = online_inp('new_test_cases/B30_2.txt')
+    k_bw, muy, N_s = 200, 30, 3
+    ro, K_iter, K_restart, K_bf, X = 0.9, 0.05, 0.3, 0.65, 5
+    main_solver = ACOSolver(k_bw, muy, N_s, 0.9)
     main_solver.setSolutionTime(180)
     main_solver.setParameters(ro, K_iter, K_restart, K_bf, X)
+    
+    # main_solver = BeamSolver(k_bw, muy, N_s, 1)
     main_solver.fit(problem_inputs)
     print(f'Best path found so far is: {main_solver.best_path}')
     print(f'The cost of the best path found is {TSPTW_cost(problem_inputs, main_solver.best_path)}')
-
+    # cur_min = 999999999999999
+    # for path in main_solver.found_paths:
+    #     a = TSPTW_cost(problem_inputs, path)
+    #     if a != None and a < cur_min:
+    #         cur_min = a
+    # print(cur_min)
+        
+    # print(main_solver.found_paths[0], TSPTW_cost(problem_inputs, main_solver.found_paths[0]))
+    # print(main_solver.found_paths[-1], TSPTW_cost(problem_inputs, main_solver.found_paths[1]))
 
