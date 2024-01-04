@@ -366,7 +366,8 @@ print(n)
 def main():
     start_time = time.process_time()
     if n <=100:
-        end_time = start_time + 10
+        # cũng không cần thiết lắm 
+        end_time = start_time + 100
     else: 
         end_time = start_time + 280
     end_time = end_time = start_time + 280
