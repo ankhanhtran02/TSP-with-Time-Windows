@@ -48,7 +48,7 @@ def read_input_file(filename='TSPTW_test_1.txt'):
         return None
     
     
-# n , e, l, d, time_matrix = read_input_file('untitled.txt')
+# n , e, l, d, time_matrix = read_input_file('r1.txt')
 # print(n,e,l,d)
 # print([n,e,l,d,time_matrix])
 # n , e, l, d, time_matrix = read_input_file('Test_BinhQuan.txt')
@@ -73,10 +73,10 @@ for i in range(n + 1):
     time_matrix.append(_)
 
 
-
-# e = [0] + e
-# l = [0] + l
-# d = [0] + d 
+start_time = time.process_time()
+e = [0] + e
+l = [0] + l
+d = [0] + d 
 
 parents = []
 best_fitness = 999999999
@@ -364,15 +364,14 @@ def tsptw_ga(n, num_generations, population_size , p_crossover, p_mut, end_time)
     return
 print(n)
 def main():
-    start_time = time.process_time()
+    global start_time
     if n <=100:
-        # cũng không cần thiết lắm 
-        end_time = start_time + 100
+        end_time = start_time + 10
     else: 
-        end_time = start_time + 180
+        end_time = start_time + 280
     end_time = end_time = start_time + 180
     while True:
-        tsptw_ga(n, num_generations = 200,  population_size = 10, p_crossover = 0.9, p_mut = 0.09, end_time=end_time)
+        tsptw_ga(n, num_generations = 20,  population_size = 10, p_crossover = 0.9, p_mut = 0.09, end_time=end_time)
         if time.process_time() > end_time:
             break
     # tsptw_ga(n, num_generations = 5,  population_size = 10, p_crossover = 0.9, p_mut = 0.09, end_time=end_time)
@@ -381,5 +380,4 @@ print(g_solution)
 main()
 print(best_fitness)
 print(*best_tour)
-
 # Nếu là test chặt thì khó tránh khỏi việc chỉ có thể ra greedy nếu nó tồn tại
