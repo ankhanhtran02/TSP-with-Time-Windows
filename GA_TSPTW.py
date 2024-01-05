@@ -369,8 +369,8 @@ def main():
         # cũng không cần thiết lắm 
         end_time = start_time + 100
     else: 
-        end_time = start_time + 280
-    end_time = end_time = start_time + 280
+        end_time = start_time + 180
+    end_time = end_time = start_time + 180
     while True:
         tsptw_ga(n, num_generations = 200,  population_size = 10, p_crossover = 0.9, p_mut = 0.09, end_time=end_time)
         if time.process_time() > end_time:
