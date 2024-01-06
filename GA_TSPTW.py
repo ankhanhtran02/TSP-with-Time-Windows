@@ -49,9 +49,9 @@ def read_input_file(filename='TSPTW_test_1.txt'):
     
     
 # n , e, l, d, time_matrix = read_input_file('r1.txt')
-# print(n,e,l,d)
-# print([n,e,l,d,time_matrix])
-# n , e, l, d, time_matrix = read_input_file('Test_BinhQuan.txt')
+# e = [0] + e
+# l = [0] + l
+# d = [0] + d
 '''
 hoặc nhập input thủ công như đống # dưới đây
 '''
