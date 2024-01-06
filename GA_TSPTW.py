@@ -74,9 +74,6 @@ for i in range(n + 1):
 
 
 start_time = time.process_time()
-e = [0] + e
-l = [0] + l
-d = [0] + d 
 
 parents = []
 best_fitness = 999999999
