@@ -93,7 +93,7 @@ def generate_testfile_Y(time_window_range:tuple, travel_time_range:tuple, N=100,
     '''
     This function generates test cases for the TSP with Time Window problem. The parameters are:
         + time_window_range: a tuple (start, end) specifying the range of the time windows (e_i, l_i) (guarantee that e_i >= start and l_i ~ end)
-        + travel_time_range: a tuple (start, end) specifying the range of the elements of the travel time matrix. Currently this travel time matrix is a (N+1) x (N+1) symmetric matrix with 0s on the main diagonal
+        + travel_time_range: a tuple (start, end) specifying the range of the elements of the travel time matrix. This is an updated version of generate_testfile_X where all values of d are zeros and the time matrix will change accordingly, transform the problem into an equivalent one.
         + N: the number of total points to travel
         + dist_type is a string which specifies the type of distribution you want to use when elements of the time window and travel time matrices are generated randomly
         + filename is the name of the file that stores the generated test case
@@ -231,5 +231,5 @@ def TSPTW_cost(input:tuple, path:list, return_to_0=False):
     return travel_cost
 
 if __name__ == '__main__':
-    generate_testfile_X((0, 400), (10, 40), 12, dist_type='uniform')
+    generate_testfile_Y((0, 400), (10, 40), 12, dist_type='uniform')
     
