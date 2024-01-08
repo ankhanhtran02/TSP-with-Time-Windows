@@ -92,7 +92,7 @@ def solve(problem_inputs):
     # Solving
     status = solver.Solve()
     if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
-        print(f'ORTOOLS status is {status}')
+        # print(f'ORTOOLS status is {status}')
         # print(objective.Value())
         # print(solver.wall_time())
         # for i in range(n+1):
@@ -113,7 +113,7 @@ def solve(problem_inputs):
                 print()
                 break
     elif status == pywraplp.Solver.NOT_SOLVED:
-        print('BUG VL')
+        # print('BUG')
         i = 0
         print(n)
         while True:
@@ -135,30 +135,13 @@ def solve(problem_inputs):
 
 
 if __name__ == "__main__":
-    # Input for the program
-    # n = int(input())
-    # e, l, d = [None], [None], [0]
-    # for _ in range(1, n+1):
-    #     e_i, l_i, d_i = map(int, input().split())
-    #     e.append(e_i)
-    #     l.append(l_i)
-    #     d.append(d_i)
-    # t = []
-    # for _ in range(n+1):
-    #     t.append(list(map(int, input().split())))
 
-    # base_URL = "https://raw.githubusercontent.com/ankhanhtran02/TSP-with-Time-Windows/main/test_cases/"
-    # test_file_name = "rbg010a.txt"
-    # txt = urlopen(base_URL + test_file_name).read().decode("utf-8")
-    # with open("TSPTW_test_1.txt", "w") as file:
-    #     file.write(txt)
-
-    print("Start solving...")
-    filename = 'new_test_cases/B30_2.txt'
-    TSP_path = solve(read_input_file(filename))
+    # print("Start solving...")
+    filename = 'new_test_cases/B10.txt'
+    n, e, l, d, t = read_input_file(filename)
+    TSP_path = solve((n, e, l, d, t))
     if len(TSP_path) > 0:
-        print(TSP_path)
-        print(f'The optimal cost is: {TSPTW_cost(read_input_file(filename),TSP_path)}')
+        # print(f'The optimal cost is: {TSPTW_cost(read_input_file(filename),TSP_path)}')
     else:
         print(f'Cannot find any feasible solution in time limit.')
 
