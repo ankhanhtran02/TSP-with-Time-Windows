@@ -132,7 +132,7 @@ else: optimal_path = start_path2
 
 run_time = 180
 depth = 6 if n <= 30 else (2 if n <= 300 else 1)
-vertex_check = n // 2 if n < 100 else (n // 6 if n <= 300 else 10000 // n)
+vertex_check = n // 2 if n < 100 else (n // 6 if n <= 300 else 10)
 
 while len(tabu) > 0: 
     element = tabu.popleft()
