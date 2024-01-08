@@ -130,7 +130,7 @@ def solve(problem_inputs):
     else:
         print(status)
     end_solving = default_timer()
-    print(f"Execution time is: {end_solving - start_solving}")
+    # print(f"Execution time is: {end_solving - start_solving}")
     return TSP_path
 
 
