@@ -69,7 +69,7 @@ class Solver:
                 else:
                     '''Calculate the arrival time at j'''
                     cur_time += self.time_matrix[self.route[j-1].ID][self.route[j].ID]
-                
+
                 if cur_time < self.route[j].e:
                     cur_time = x.e
                 '''If arrival time at a node exceeds time limit, immediately move to the next position'''
@@ -77,7 +77,7 @@ class Solver:
                     endRoute = False
                     break
                 cur_time += self.route[j].d
-            
+
             if endRoute and cur_time < min_total_time:
                 best_pos = i
                 min_total_time = cur_time
@@ -88,8 +88,9 @@ class Solver:
             return True
         else:
             return False
-    
+
     def calc_time(self):
+        # print([node.ID for node in self.route])
         for i in range(1,len(self.route)):
             node = self.route[i]
             prev_node = self.route[i-1]
@@ -102,8 +103,9 @@ class Solver:
             node.departure_time = cur_time
 
     def checkFeasible(self, route):
+
         if len(route) != len(self.nodes):
-            return False 
+            return False
         for i in range(1, len(route)):
             cur_time = route[i-1].departure_time + self.time_matrix[route[i-1].ID][route[i].ID]
             if cur_time < route[i].e:
@@ -111,7 +113,7 @@ class Solver:
             if cur_time > route[i].l:
                 return False
         return True
-    
+
     def cost(self, route):
         if not self.checkFeasible(route):
             return None
@@ -120,35 +122,38 @@ class Solver:
             travel_time += self.time_matrix[route[i-1].ID][route[i].ID]
         return travel_time
 
+    def InsertProcess(self, order):
+        '''route: the current route, nodes will be added into it'''
+        self.route = [self.nodes[0],]
+        for i in order:
+            if not self.Insert(self.nodes[i]):
+                break
+        else:
+            c = self.cost(self.route)
+            if c!= None and c < self.min_obj_value:
+                self.min_obj_value = c
+                self.opti_solution = self.route
+                self.runtime = time.time() - self.start
+
     def Solve(self, maxtime):
-        start = time.time()
-        nodes = sorted(self.nodes[1:], key = lambda node: node.l)
-        n = len(nodes)
-        min_obj_value = float('inf')
-        count_min_sol = 0
-        runtime = 0
-        while time.time() - start < maxtime:
-            '''route: the current route, nodes will be added into it'''
-            self.route = [self.nodes[0],]
+        self.start = time.time()
+        self.min_obj_value = float('inf')
+        self.runtime = 0
+        n = self.N
+        sorted_by_e = sorted(self.nodes[1:], key = lambda node: node.e)
+        l = [node.ID for node in sorted_by_e]
+        self.InsertProcess(l)
+        sorted_by_l = sorted(self.nodes[1:], key = lambda node: node.l)
+        l = [node.ID for node in sorted_by_l]
+        self.InsertProcess(l)
+        while time.time() - self.start <= maxtime:
             '''l: the order the nodes are added'''
-            l = random.sample(list(range(n)),n)
-            for i in l:
-                if not self.Insert(nodes[i]):
-                    break
-            else:
-                c = self.cost(self.route)
-                if c!= None and c <= min_obj_value:
-                    print(min_obj_value)
-                    if c < min_obj_value:
-                        count_min_sol = 0
-                        min_obj_value = c
-                        self.opti_solution = self.route
-                        runtime = time.time() - start
-                    if c == min_obj_value:
-                        count_min_sol += 1
-        if min_obj_value != float('inf'):
+            l = random.sample(list(range(1, n+1)),n)
+            self.InsertProcess(l)
+
+        if self.min_obj_value != float('inf'):
             route = [node.ID for node in self.opti_solution]
-            return route[1:], min_obj_value, runtime
+            return route[1:], self.min_obj_value, self.runtime
         else:
             return 'None', 'None', 'None'
 
@@ -162,22 +167,8 @@ class Solver:
             print(self.cost(self.opti_solution))
 
 if __name__ == '__main__':
-    # N, nodes, time_matrix = import_data_from_file('new_test_cases\\B500.txt')
-    # s = Solver(N, nodes, time_matrix)
-    # path, value, runtime = s.Solve(30)
-    # print(path, value, runtime, sep='\n')
-    df = pd.DataFrame(columns = ['Test case', 'Path', 'Value', 'Time'])
-    folder_path = 'new_test_cases'
-    file_names = ['B10.txt', 'B10_2.txt', 'B20.txt', 'B20_2.txt', 'B30.txt', 'B30_2.txt', 'B63.txt', 'B63_2.txt', 'B201.txt', 'B201_2.txt', 'B233.txt', 'B233_2.txt', 'B300.txt', 'B300_2.txt', 'B500.txt', 'B500_2.txt', 'B800.txt', 'B800_2.txt', 'B1000.txt', 'B1000_2.txt']
-    for filename in file_names:
-        print('------------------------')
-        inp_filepath = os.path.join(folder_path, filename)
-        N, nodes, time_matrix = import_data_from_file(inp_filepath)
-        # N, nodes, time_matrix = import_data()
-        s = Solver(N, nodes, time_matrix)
-        path, value, runtime = s.Solve(180)
-        print(f'Solution of {filename}:')
-        print(filename, path, value, runtime, sep='\n')
-        new_row = {'Test case': filename, 'Path': path, 'Value': value, 'Time': runtime}
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    df.to_csv('insertion3_results.csv', index=False)
+    N, nodes, time_matrix = import_data()
+    s = Solver(N, nodes, time_matrix)
+    path, value, runtime = s.Solve(180)
+    print(N)
+    print(*path)
