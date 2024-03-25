@@ -14,12 +14,12 @@ A delivery driver picks up goods at the warehouse (point 0) and needs to deliver
 Each solution is represented by a permutation s[1], s[2], . . ., s[N] of 1, 2, . . ., N.​
 
 ### Input
-    * Line 1: N
-    * Lines 1 + i (i = 1,...,N): e(i), l(i), d(i) of each customer
-    * Lines i + N + 2 (i = 0,...,N): the i-th row of the travel time matrix t(i,j)
+* Line 1: N
+* Lines 1 + i (i = 1,...,N): e(i), l(i), d(i) of each customer
+* Lines i + N + 2 (i = 0,...,N): the i-th row of the travel time matrix t(i,j)
 
 ### Output
-    A delivery path consisting of all points except point 0
+A delivery path consisting of all points except point 0
 
 ## Contributors <a name="contributors"></a>
 We want to thank the following contributors for their valuable contributions to this project:
